@@ -1,0 +1,201 @@
+Atenção:
+- Não edite este ficheiro em programas como Word e afins. Use exclusivamente um editor de texto simples. Em caso de dúvida, use o editor do Spyder.
+- Não altere a estrutura deste ficheiro. Preencha as respostas apenas nos espaços respectivos (a seguir à tag R#:)
+- Pode adicionar linhas no espaço para as respostas mas as respostas devem ser sucintas e directas.
+- Pode incluir referências a imagens ou a ficheiros html como os relatórios gerados com os clusters. Para isso basta incluir este documento na pasta com os reports ou imagens e referí-los no texto pelo nome do ficheiro numa linha isolada. Por exemplo, a linha
+
+teste.png
+
+refere um ficheiro de imagem teste.png na mesma pasta deste documento.
+
+QUESTÔES:
+
+Q1: Explique como seleccionou os melhores atributos para a fase de clustering. Em particular, os métodos de visualização usados para explorar os 18 atributos extraídos e quaisquer testes estatísticos usados.
+R1: Tendo 18 atributos em mão, possivelmente, existem vários que podem ser descartados por não adicionarem informação relevante para realizarmos o clustering dos dados. Assim, tivémos de selecionar os melhores atributos (os que 
+melhor representam os dados - os que preservam mais variância). Analisámos 3 técnicas para redução da dimensionalidade para passar de 2500 atributos para 18, 6 com cada uma das técnicas, PCA, t-sne e Isomap. O objetivo é com as 6 features que escolhermos,
+ficar com as que preservam a maior variabilidade: O PCA tem capacidade de manter variância linear enquanto os outros 2 conseguem manter variância não linear. Para o PCA, por exemplo, numa elipse de pontos dispersos em 2D, temos 2 eixos que definem essa nuvem - um mais comprido (que representa o comprimento da nuvem e é definido pelo primeiro vetor próprio
+da matriz de covariancias e um eixo mais pequeno (que representa a largura da nuvem e é definido pelo segundo vetor próprio). O que nós queremos neste caso são as features associadas ao primeiro eixo por ser este que guarda um maior
+intervalo da variancia dos dados. Após termos extraído os 18 atributos, para filtrá-los e escolher os melhores fizemos o teste Univariado "ANOVA" que calcula o F-test de cada atributo (individualmente) sendo o valor do F-test grande se a variância do atributo for também grande.
+Ordenámos os melhores atributos consoante os resultados do F-test, e realizámos o Wrapper Method Multivariado sequential forward selection. Para este fim começamos com um atributo, corremos o algoritmo de clustering que vamos utilizar e medimos a sua validez com o adjusted rand index.
+Em cada iteração, vamos manter o atributo que trouxe mais melhorias ao score (de notar que se os novos atributos trouxerem todos a mesma melhoria, vão ser escolhidos através do valor do f-test pois estão ordenados), se não houve melhorias ou já temos o númer desejado de atributos terminamos o wrapper method.
+(Visto que vamos usar dois algoritmos de clustering, os atributos selecionados para DBSCAN e para KMEANS podem ser diferentes).
+Para os nossos dados, decidimos fazer as representacoes graficas de Coordenadas Paralelas e Scatter Matrix (que colocámos na pasta /plots/visualization). Para os gráficos de Coordenadas Paralelas percebemos que a variância dos vários atributos são todas bastante parecidas, com algumas exceções no TSNE que tem valores mais divergentes.
+Notámos também que para esta representação gráfica, com 563 pontos, é difícil interpretar os gráficos e as diferenças entre os vários atributos pois o gráfico está sobrecarregado. Por esta razão fizemos também a representação da Scatter Matrix que para além de mostrar a densidade de cada atributo (na diagonal), mostra-nos como
+estes atributos se relacionam dois a dois. Destas relações retirámos que nenhum par de atributos se relaciona fortemente entre si, o que era é vantajoso visto que nenhum deles parece ser redundante.
+
+
+Q2: Depois de seleccionar os atributos, standardizou ou normalizou os valores? Justifique a sua decisão.
+R2: Visto que o processo de feature extraction envolve transformações aos dados, e que cada algoritmo retorna valores em escalas diferentes, decidimos standardizar as features pois não queremos que features obtidas por um algoritmo tenham mais
+peso que features obtidas por outro. Decidimos não normalizar porque, em primeiro lugar porque não queremos trabalhar com valores entre 0 e 1, em segundo lugar pois este pré-processamento dos dados é extremamente sensível a outliers,
+por exemplo: numa distribuição normal que os valores estão maioritariamente entre 0 e 1000, se tivermos ums outlier 30000, os atributos vão tomar valores muito inferiores ao que corresponde à sua distribuição (sendo a consequência
+esta feature ter um peso menor que as outras).
+
+
+Q3: Explique como encontrou o valor do raio da vizinhança (epsilon) para o algoritmo de DBSCAN pelo procedimento descrito no artigo "A density-based algorithm for discovering clusters in large spatial databases with noise".
+R3: O valor do raio da vizinhanca (epsilon) representa o tamanho do raio considerado, centrado a partir de cada exemplo e que, dentro desse raio, tem de existir um número minimo de pontos (sendo o número mínimo um parametro) para esto ser considerado um core-point e não apenas noise.
+Para descobrirmos o valor a utilizar, começamos por representar o gráfico de, para cada ponto, representar a distancia ao seu k-vizinho mais perto (as distancias têm de estar organizadas). Para este trabalho,
+o k será 5 em vez de 4 como usado no artigo por ser este o valor default usado na funçao do scikit DBSCAN. Depois desta representacao feita, iremos observar o tracado do grafico que no eixo dos xx tem os pontos (ordenados por maior distância ao 5 vizinho) e no eixo dos yy as respetivas distâncias ao 5 vizinho.
+Este terá um comportamento decrescente e numa determinada zona terá um aspeto de um cotovelo em que, a partir desta zona, a funçao nao decrescerá ao mesmo ritmo.
+Isto diz-nos que tudo o que está para a esquerda do cotovelo apenas é ruido (pontos com uma distancia muito elevada ao seu quinto vizinho mais proximo, muito dispersos) e nao devem ser considerados, por isso o valor do epsilon escolhido corresponde à coordenada yy num ponto pertencente ao cotovelo.
+Tudo para a direita do cotovelo representa os pontos cujas distancias ao quinto vizinho sao mais parecidas fazendo assim com que a funcao nao decresca tao bruscamente como explicado anteriormente para a parte esquerda do threshold (ruido) (pela distancia
+ao quinto vizinho ser mais baixa, isto representa que estes pontos não são noise e vão fazer parte de um cluster).
+
+
+Q4: Examinando os clusters gerados pelo algoritmo DBSCAN com o valor otimizado pelo método descrito no artigo, parece-lhe que o resultado é adequado para aglomerar estas imagens? Justifique a sua resposta.
+R4: Ao analisarmos os clusters gerados pelo dbscan com o epsilon escolhido pelo método do cotovelo, os resultados ficaram muito àquem para aglomerar estas imagens em clusters que signifiquem alguma coisa. O resultado que obtivemos com estes parâmetros
+resultou em apenas dois clusters, sendo que um deles tem bastantes poucos elementos. Visto que o problema que estamos a tentar resolver é o de facilitar o trabalho aos biólogos, ter uma separação em 2 clusters, um com meia dúzia de células e outro com muitas células
+não nos parece a melhor solução para o problema que queremos resolver, logo o resultado do DBSCAN não foi nada satisfatório. Isto poderá estar relacionado com todas as imagens serem muito semelhantes, fundo preto com uma célula no meio e que não existam diferenças significativas
+em termos de cores dos pixeis suficientes para gerar zonas de diferentes densidades. Como este algoritmo funciona à base de identificar zonas de diferentes densidades, por estas zonas serem mais homogéneas, o DBSCAN acaba por agrupar muitos pontos no mesmo cluster.
+Selecionámos as duas melhores features (através da ANOVA) para podermos visualizar de forma simples a distribuição dos pontos. Apesar de perdermos informação de como as restantes features se relacionam, estas duas parecem ser bastante representativas destas relações.
+Fizemos plot e guardámos a imagem "plots/2D_Cluster.png". Ao analisarmos este gráfico é nos óbvio que apesar de existir uma ligeira oscilação de densidades, o algoritmo DBSCAN vai atribuir a todos os pontos a mesma label (pois irão pertencer ao mesmo cluster).
+Isto acontece pois o DBSCAN diz que todos os pontos que estão ligados por core-points pertencem ao mesmo cluster (sendo uma ligação dois pontos estarem a uma distância <= a epsilon; sendo um core-point um ponto que tem ligações com pelo menos minPoints pontos).
+Logo, como estes pontos não estão suficientemente separados, o DBSCAN vai encontrar apenas um cluster + noise.
+
+
+Q5: Descreva a sua análise dos parâmetros k (para K-Means) e epsilon (para DBSCAN) usando os indicadores internos e externos indicados no enunciado. Inclua os dois gráficos com os valores dos indicadores (indicando o nome da imagem de cada plot numa linha da resposta) em função dos parâmetros k e epsilon e descreva a escolha dos intervalos nos quais examinou estes parâmetros. Indique, justificando, que conclusões pode tirar desta análise.
+R5: As imagens destes plots têm os nomes "plots/KMEANS.png" e "plots/DBSCAN.png" para Kmeans e DBSCAN, respetivamente.
+Selecionando os parâmetros cujos scores com indicadores internos foram mais altos (no nosso caso o silhouette score), isto não revelou ser vantajoso. Por ser um indicador interno, este apenas tem em conta o "formato" do cluster e os dados em si, sem qualquer tipo de 
+label logo não garante que os clusters em si estejam corretos. No entanto, utilizámos este indicador para medir a qualidade dos clusters pois, sendo um indicador interno não necessita de labels e assim conseguimos utilizar todas as 563 imagens dadas. Caso tivéssemos todos os dados (ou uma maior porção)
+labeled, seria definitivamente mais vantajoso utilizar um indicador que tomasse partido disso (um indicador externo).
+DBSCAN:
+O melhor valor do indicador interno silhouette score foi de 0.44289, para o valor de Epsilon 1.4.
+O melhor valor do indicador exerno Adjusted Rand Index foi de 0.31932.
+O melhor valor do indicador exerno Precision foi de 0.53075.
+O melhor valor do indicador exerno Recall foi de 1.
+O melhor valor do indicador exerno F1 foi de 0.53592.
+O melhor valor do indicador exerno Rand Index foi de 0.66142.
+KMEANS:
+O melhor valor do indicador interno silhouette score foi de 0.28332, para o valor de K 5.
+O melhor valor do indicador exerno Adjusted Rand Index foi de 0.52071.
+O melhor valor do indicador exerno Precision foi de 0.74187.
+O melhor valor do indicador exerno Recall foi de 0.42985.
+O melhor valor do indicador exerno F1 foi de 0.50649.
+O melhor valor do indicador exerno Rand Index foi de 0.75679.
+Se compararmos os valores do silhouette score dos dois algoritmos, verificamos que o DBSCAN obtem um valor superior ao do KMEANS. Isto acontece pois o silhouette score beneficia clusters muito próximos. Como o resultado do DBSCAN foi muito pobre, e apenas separou algumas imagens que considerou
+noise do resto dos pontos, o seu silhoette score vai ser inerentemente influenciado positivamente pela sua baixa performance. Na formula do silhouette score, temos a(i) - a média das distâncias dentro do mesmo cluster; b(i) - a média das distâncias ao cluster mais próximo
+a fórmula é igual a: s(i) = (b(i) - a(i)) / max(a(i), b(i)). Como no DBSCAN o b(i) vai ser, no geral, maior que o b(i) no KMEANS, pois os clusters no KMEANS estão mais próximos, o valor da subtração vai ser maior no DBSCAN. 
+Para a escolha de intervalos no DBSCAN, a range do epsilon testada [0.7 - 2.5]╔ foi correspondente à range do cotovelo no gráfico "plots/elbow.png".
+Para a escolha de intervalos no KMeans, a range do k testada [2 - 15] foi devido a 2 ser o valor mínimo de k (pois 1 não faz sentido) e 15 ser um valor suficientemente grande em que não pareciam haver grandes melhorias em ultrapassá-lo (olhando para o gráfico).
+Como podemos ver, o melhor tipo de indicadores a usarmos para o nosso trabalho sao os indicadores internos (neste caso, apenas o silhouette score). 
+Isto porque a quantidade de dados que estão labeled é muito reduzida comparativamente ao corpus completo de dados com que estamos a trabalhar. Por causa disto, os indicadores externos que têm em conta os dados labeled podem não ter uma capacidade de generalização
+muito boa porque apenas têm capacidade de verificar a sua performance para os poucos pontos que têm um grupo atribuido.
+
+
+Q6: Seleccione alguns valores dos parâmetros testados na questão cinco e examine os clusters correspondentes com mais atenção, gerando o ficheiro HTML com as imagens. Justifique a escolha destes valores, discuta as diferentes opções e proponha uma recomendação que poderia ajudar a tarefa dos biólogos de classificar as células e rejeitar erros de segmentação.
+R6: Os ficheiros que do qual nos estamos a referir estão na pasta "/html"
+KMEANS:
+Para o valor de k = 4 (valor escolhido por parecer ser a separação lógica de 3 fases de divisão das células + noise -> hardcoded), temos uma boa separação entre cada uma. Temos 3 clusters em que a conseguimos afetar uma fase da divisão e outro cluster com apenas um.
+Em cada um destes clusters, que não são tão parecidos aos outros elementos do mesmo cluster.
+O valor de k = 5 foi escolhido automáticamente pelo nosso programa (pois tem o melhor valor de silhouette score). Com este valor obtemos 4 clusters bem divididos e um cluster com apenas um elemento que possívelmente é um outlier. Com 4 clusters (excluindo o outlier) ficamos com uma boa divisão
+entre as 3 fases da divisão da célula + noise. É de notar que cada cluster tem alguns elementos que parecem estar no lugar errado. Isto acontece com um pequeno número de elementos, pelo que nos parece ser apenas uma pequena taxa de erro, sendo estes erros facilmente ignorados pelos biólogos.
+Para o valor ded k = 11 (escolhido pois no gráfico que obtivemos, temos um pico nos valires de Adjusted Rand Index e de Precision), notamos uma muito boa separação das imagens das células. 3 clusters são muito pequenos pelo que podem ser ignorados. Dos restantes 8 clusters, 2 deles
+têm a grande maioria do noise, pelo que isso facilita em grande parte o trabalho que os biólogos teriam a excluir estas imagens. Para os restantes 6 clusters, as células agrupadas são muito semelhantes entre si, o que para os biólogos não seria um problema classificá os clusters imediatamente.
+O único trabalho que teriam é em "juntar 2 clusters parecidos", isto é, considerar 2 clusters que o algoritmo considerou células em fases diferentes, como células na mesma fase. Esta separação parece-nos ter a ver com brilho das imagens.
+Para o k = 10 (escolhido por ser um valor próximo de k = 11), notamos que as imagens estão bem separadas mas clusters bons parecem ter mais imagens segmentadas. Isto é representativo da diferença precisão do k = 10 e do k = 11. 
+1.4 1.25 0.9 2.4
+DBSCAN:
+Para o valor de Epsilon = 1.4 (valor escolhido por ser o valor que conseguiu um silhouette score mais elevado) temos uma horrível separação dos dados. A separação apenas entre 2 imagens e o resto dos dados. Isto deve-se aos fatores que falámos nas questões anteriores (DBSCAN não consegue diferenciar bem entre imagens e atribui a todas o mesmo label).
+Para o valor de Epsilon = 1.25 (valor do elbow) obtemos um resultar ligeiramente melhor. Temos 6 imagens que parecem estar relacionadas num cluster, e o resto dos pontos noutro cluster. De qualquer forma, este continua a ser um mau resultado.
+O valor de Epsilon = 0.9 (escolhido por ser o melhor valor de Adjusted Rand Index) deu-nos o melhor resultado do DBSCAN. Obtivemos 1 cluster médio (mal divido), um cluster enorme e um cluster minusculo.
+Para epsilon = 2.4 obtivemos, novamente, um mau resultado semelhante aos dos valores 1.4 e 1.25(o que faz sentido olhando para o gráfico, após epsilon = 1.4 as retas mantêm-se constantes).
+CONCLUSAO:
+Tendo em conta os resultados, rejeitamos a possibilidade de utilizar o DBSCAN como um algoritmo de clustering para ajudar os biólogos a agrupar as células e/ou ajudar a identificar erros de segmentação.
+Decidimos que melhores resultados foram obtidos quando utilizámos o KMEANS com os valores de 5 e de 11, pelo que recomendariamos aos biólogos utilizar um destes dois valores. Ao utilizar o valor k = 5, há a vantagem de que os biólogos teriam menos trabalho em "classificar" os clusters, sendo
+uma desvantagem estes conterem algumas imagens com erro de segmentação. Para k = 11, temos como vantagem a identificação dos clusters ser muito facilitada por serem mais pequenos e pelos elementes serem muito semelhantes entre si. Desta forma também é muito fácil identificar noise. A única desvantagem
+aparente é de que, se há um trabalho posterior de ter que agrupar clusters cujas células pertençam à mesma fase celular.
+Existiria outra opção para ajudar os biólogos, que seria dividir as imagens com erro das imagens boas, pelo que o DBSCAN não foi bem sucedido nesta tarefa.
+Com o KMEANS, com um valor de k = 2, esta divisão é possível mas o primeiro cluster parece ter noise e algumas células boas (que seriam descartadas). No entanto, o segundo cluster não tinha quase nenhumas imagens com erro. Por esta razão, caso os biólogos dispusessem de um grande número
+de imagens, e não se importassem que algumas fossem descartadas (apesar de boas), recomendariamos também o valor de k = 2 com o KMEANS, caso quisessem apenas analisar células sem erro.
+
+
+Q7: Discuta vantagens, problemas ou otros aspectos destes dois algoritmos (K-Means e DBSCAN) que considere relevantes para ajudar os biólogos a organizar estas imagens, considerando o seu conhecimento teórico destes algoritmos bem como os resultados que obteve no seu trabalho.
+R7: O algoritmo kmeans para este problema em especifico, teoricamente, antes de uma analise empirica, parece ser mais vantajoso visto que nós queremos agrupar as celulas pela fase da divisao celular em que se encontram e como sabemos o numero de fases existentes, temos a vantagem de
+ter uma boa ideia do (único) parâmetro que o KMeans leva (o número de divisões + noise).
+No DBSCAN, nao é dado como parametro o numero de clusters (density based algorithm) e assim, a divisao dos dados pode nao ser correta, daí reforçando a ideia de que neste caso por sabermos o numero de clusters, o kmeans parecer melhor (pois o DBSCAN é aconselhado para quando não temos
+muita informação dos dados em que estamos a trabalhar). 
+Tendo em conta a representacao dos pontos num grafico, conseguimos ter uma ideia de que nao existem areas notavelmente mais ou menos densas e por isto o DBSCAN nao ira ser o ideal para separar estas nuvens homogeneas.
+Relativamente ao kmeans, temos a desvantagem da fase inicial em que tem de ser atribuidos k centroides aleatoriamente distribuidos. Esta inicializacao por ser aleatoria, pode resultar em clusters finais diferentes, o que dificultará o trabalho dos biologos.
+Por o dbscan classificar tendo em conta diferentes agrupamentos de densidade dos dados, em zonas fronteiriças, este fará a separacao apenas em dois conjuntos. Por exemplo no nosso trabalho, por as imagens terem um fundo preto e uma célula no meio, o dbscan irá
+fazer a diferenciacao entre o fundo e a celula em si mas por todas as imagens terem celulas, tera muita dificuldade em depois diferenciar as varias fases em que as celulas se encontram por todas terem densidades muito semelhantes.
+Em termos mais práticos, isto significa que o DBSCAN vai ter dificuldades em distinguir uma célula em divisão de uma célula na fase inicial pois a diferença dos valores dos pixeis do anel não são suficientemente diferentes para a distinguir da zona citoplasmática.
+Da mesma forma, o DBSCAN tem dificuldades em distinguir outras partes de cada imagem pois são muito semelhantes.
+Como o Kmeans atribui a todos os pontos um cluster, temos a possibilidade de infetarmos clusters bons com noise. Nos nossos resultados parece-nos que existe um cluster que é constituído maioritariamente por noise, simulando assim a deteção do mesmo (mesmo que este cluster tenha
+bons exemplos/não noise ou que bons clusters tenham alguns elementos que são noise).
+
+
+R8: Os resultados que considerámos relevantes estão na pasta "/html", com o nome "affinityPropagation_bestDamping=x.html" em x é o valor de damping que gerou tais clusters.
+Decidimos escolher o algoritmo de Affinity Propagation por este ser também prototype based clustering assim como o kmeans (que deu bons resultados), visto que, depois de analisarmos o dbscan, não seria boa ideia escolhermos um algoritmo que fizesse o agrupamento
+dos dados baseando-se nas densidades destes. O Affinity Propagation parece combinar duas características desejáveis do KMEANS e do DBSCAN: o facto de ser prototype based é do KMEANS e o facto de não necessitarmos de dar o número de clusters como input é do DBSCAN.
+O algoritmo baseia-se na passagem de mensagens de responsabilidade e disponibilidade entre os vários pontos (em que cada mensagem corresponde a uma matriz que vai sendo atualizada por iteração).
+Para cada cluster será escolhido um ponto como seu representante, baseando-se nas seguintes matrizes:
+A matriz de responsabilidade corresponde a quão bom um determinado ponto x_k serve como representante de outro ponto x_i (comparativamente aos outros possíveis representantes para x_i).
+A matriz de disponibilidade corresponde a quão apropriado seria para o ponto x_i de escolher o ponto x_k como o seu representante.
+
+Este algoritmo tem como parâmetro o damping que corresponde a quanto é que estes valores são resistentes à mudança em cada iteração. Caso este parâmetro tome um valor baixo, em cada uma das iterações, os pontos não serão tão resistentes à 
+mudança, logo precisarão de mais iterações porque para o algoritmo terminar é necessário que não hajam alterações entre N iterações (ou atingir o número máximo de iterações definido).
+Caso o parâmetro seja muito alto (próximo de 1), praticamente não haverá alterações entre iterações (convergência muito lenta mas existe uma maior facilidade em os valores não mudarem durante N iterações consecutivas, o que termina o algoritmo).
+
+Temos também um outro parâmetro que corresponde ao número minimo de iteracoes consecutivas em que os valores têm de permanecer iguais. Caso os valores das matrizes se mantenham iguais durante N iterações consecutivas, o algoritmo termina e devolve-nos o resultado.
+Este parâmetro foi deixado default (N = 15), apenas alterámos o do damping por parecer ser este que mais condiciona o número de clusters gerados.
+
+Analisemos as fórmulas das matrizes de responsabilidade e availability respetivamente:
+r_(t+1)(i,k) = damping * r_t(i, k) + (1 - damping) * r_(t+1)(i, k)
+a_(t+1)(i,k) = damping * a_t(i, k) + (1 - damping) * a_(t+1)(i, k)
+Temos que o primeiro termo r_t(i, k) = iteração anterior e r_(t+1)(i, k) = iteracao atual, caso o valor de damping seja inferior a 0.5, será dado mais peso à iteração atual do que o resultado
+de todas iteracoes anteriores o que poderia fazer com que o algoritmo não conseguisse convergir.
+Caso o damping seja 1, não haverá alterações absolutamente nenhumas entre cada iteração e assim, o numero de clusters para o qual o algoritmo converge será apenas um (o inicial) - não
+fazendo sentido testar para este valor, analogamente ao k=1 no kmeans.
+Com isto, temos que o intervalo para o parametro de damping que vale a pena analisar é o [0.5, 1[, (intervalo tambem referido na documentacao do scikit). E concluímos que o que este valor representa é em cada iteração, quanta informação retemos das iterações anteriores e
+quanto vamos alterar esta informação com base na iteração atual.
+
+Depois de feito o plot como fizemos para o KMEANS e o DBSCAN ("plots/AFFINITYPROPAGATION.png"), conseguimos perceber que as métricas se mantém aproximadamente constantes até 0.9 e que após este valor sofrem 
+variações (resultado que nos deixa satisfeitos por 0.9 ser referido em documentação como um valor importante: http://genes.toronto.edu/affinitypropagation/faq.html).
+Com isto temos que, até ao limite dos 0.9, o resultado em termos dos clusters gerados é bastante semelhante. O número de clusters gerados é bastante alto (mais do que 30) e a homogeneidade intra-cluster é elevadíssima.
+Isto pode ter tanto vantagens como desvantagens para os biólogos. Por um lado, ao analisar num relance rápido cada cluster, conseguem logo perceber a fase em que as células que o integram pertencem. No entanto, este processo tem de
+ser repetido para todos os 30 clusters e aglomerados depois os resultados (juntar fases iguais que podem ter sido colocados em clusters diferentes). Especulamos que para um número mais elevado de dados, o numero de clusters possa também aumentar, 
+o que se revelaria pouco eficiente para a análise dos biologos. No entanto, temos como vantagens que todo o noise fica agrupado em clusters o que permite que imagens erradas sejam identificadas facilmente e que a semelhança intra-cluster é extremamente elevada.
+	
+Para valores pouco maiores que 0.9, temos que o numero de clusters é muito mais reduzido, tendo obtido 8 clusters em que 5 clusters tinham entre 1 a 4 elementos e 3 clusters tinham a maioria dos elementos. Em 2 dos 3 clusters, notámos que a divisão foi
+muito boa (em que conseguimos identificar apenas uma fase da divisao celular). Para o outro cluster com muitos elementos, percebemos que este também contém células maioritariamente de uma fase celular mas que contém noise.
+Por um lado, este cluster tem noise misturado com imagens boas o que implica os biologos terem de o analisar com mais cuidado. Por outro lado, o noise fica concentrado neste cluster o que facilita a interpretacao dos restantes clusters.
+
+Para valores muito próximos de 1 pelo referido acima, os clusters gerados são muito poucos (normalmente apenas 2, parecido ao DBSCAN) que contém as células todas misturadas (tanto o noise como das várias fases) o que não demonstra ser nada util para os biólogos.
+
+Outra análise que fizémos foi a que, este algoritmo é extremamente sensível às features utilizadas ao contrário dos outros algoritmos. Ao filtrarmos as features com o wrapper method temos dois resultados possíveis:
+    - Se escolhermos um valor de damping baixo (e.g. 0.5) para usar no wrapper, temos que com poucas features o Affinity Propagation demora muitas iterações a convergir. Isto faz com que muitas das vezes o algoritmo
+nos devolva uma solução intermédia. Quando isto acontece, o nosso programa tende a avaliar 0.77 como o melhor valor de damping usando como métrica o silhouette score (e como referido acima, ficamos com muitos clusters bem divididos).
+    - Se por outro lado usarmos um valor de damping mais alto (mais ou menos > 0.65) na multivariada, o algoritmo vai sempre convergir e os nossos testes dizem-nos que o melhor valor de damping é 0.91 (e temos poucos clusters).
+Esta análise leva-nos a concluir que o Affinity Propagation é muito sensível às features que lhe são dadas, o que não nos pareceu tão óbvio com o KMEANS e o DBSCAN.
+
+Concluímos que o Affinity Propagation pode ser bastante útil para os biólogos. A escolha do valor de damping depende do objetivo da análise:
+    - Se os biólogos quiserem eliminar o noise com um grande grau de confiança, recomendariamos o valor de damping de 0.77.
+    - Se quiserem dividir muito bem as imagens e não se importarem de ter algum trabalho extra a juntar clusters que possam representar a mesma fase celular, recomendariamos também o valor de 0.77.
+    - Se quiserem dividir as imagens em 3 fases celulares diferentes e não se importarem de ter que filtrar imagens com erro em um dos clusters, recomendamos o valor de 0.91.
+
+PS: Gostariamos também de referir que o Affinity Propagation suporta uma similarity matrix pre-computed. Isto significa que poderíamos manipular o que o algoritmo considera duas features iguais, por exemplo:
+    Poderíamos dizer que cores um pouco cinzentas e preto consideradas são iguais.
+
+
+Q9: (Opcional) Implemente o algoritmo de clustering hierárquico Bissecting K-Means, conforme descrito na página do enunciado e na Aula 19. Examine e discuta os resultados e sua aplicação ao problema de ajudar os biólogos a selecionar e classificar imagens de células.
+R9: O bissecting kmeans foi implementado num ficheiro à parte - "Opcional.py" através de um método recursivo, em que, a cada execução, divide os dados em 2 grupos (kmeans com k = 2). Após a divisão, a recursão seguirá sempre pelo cluster 
+com mais elementos. O algoritmo termina quando o grupo que deveria ser dividido para uma determinada iteração só tem 1 elemento.
+Para visualizarmos a execução do algoritmo de uma forma intuitiva, gerámos um pequeno dataset de teste 2d. Chamámos o algoritmo com o argumento "plot" = True, o que para cada execução do algoritmo faz o plot e coloca as imagens na
+pasta "/plots/bissecting_kmeans" dando "A" à maior divisão e "B" à menor, para quando visualizarmos as imagens estarem por ordem de execução do algoritmo. Caso queira testar para os dados "dummy" e não para os atributos extraidos
+das imagens de modo a gerar os plots falados acima, bastará descomentar as linhas de código 332 a 337 do ficheiro Opcional.py. De notar que, nos passos em que os grupos contêm apenas 1 ponto, os plots respetivos não serão feitos.
+O bissecting kmeans, por ser um algoritmo de clustering hierarquico, todas as células estarão no seu próprio cluster no último nível da árvore gerada pelo algoritmo, não nos pareceu relevante dar plot de um gráfico com apenas um ponto (os clusters finais). 
+
+Relativamente à utilidade deste método para os biologos, achamos que o resultado deste é útil. Isto porque, por ter o aspeto de uma árvore, todos os clusters dos níveis de profundidade X + 1 têm como
+pai comum o cluster do nível X, e caso vissem que o cluster pai apenas tivesse elementos com noise, poderia serlogo descartado desse ramo para baixo.
+Outra possível análise que talvez fosse mais facilitadora do trabalho aos biologos seria a de escolher o resultado de uma determinada iteração para definirem quão específica é que querem a separação das imagens.
+As imagens correspondentes aos clusters de cada iteração foram colocadas na pasta "/html/bissecting_kmeans", e percebemos que em cada iteração, a divisão é cada vez mais específica o que permite facilmente selecionar o grau de granularidade com que queremos
+os clusters. 
+Comparando este método hierárquico ao KMEANS e DBSCAN percebemos que por termos a possibilidade de escolher quão separados queremos que os dados estejam e ao mesmo tempo não precisarmos de especificar o numero de clusters 
+(vao sendo divididos em vários niveis até termos 1 ponto = 1 cluster), escolhendo uma iteração específica conseguimos ter os dados bem separados.
+Para além disto, reparámos que até em iterações baixas, os dados já se encontravam bastante bem separados pelos vários clusters.
+Desta forma, recomendariamos aos biólogos a utilização deste algoritmo e selecionariamos a iteração dependendo dos requerimentos que eles fizessem. Como foi falado para o KMEANS e para o Affinity Propagation,
+se os biólogos pretendessem obter clusters muito específicos em que os elementos de cada cluster estão bem definidos e são muito semelhantes entre si recomendaríamos  entre a 4 e a 6 iteração.
+Se quisessem ter um resultado menos específico, recomendariamos entre as iterações 2 e 3. A partir da iteração 8, parece-nos que os dados já estão demasiado separados, pelo que isto dificulta a interpretação dos clusters e reduz a utilidade destes resultados.
+(os números das iterações iriam aumentar se tivessemos um número mais elevado de dados e diminuir se tivessemos um número mais reduzido).
+
+Para concluir, este algoritmo pareceu-nos bastante vantajoso para a análise dos biólogos porque resulta numa pletora de bons resultados pelos quais os biólogos podem escolher.
+
